@@ -1,48 +1,348 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <script type="text/javascript" src="utils.js"></script>
-    <script type="text/javascript" src="int64.js"></script>
-    <script type="text/javascript" src="stages.js"></script>
-    <script type="text/javascript" src="offsets.js"></script>
-    <script type="text/javascript" src="pwn.js"></script>
-    <script>
-        function log(msg) {};
-        function rejb() {
-            document.getElementById("jbButton").textContent = "re-jailbreaking";
+    <title>iPhone Lock Screen</title>
 
-            setTimeout(() => {
-              pwn();
-            }, 100);
+    <script src="utils.js"></script>
+    <script src="int64.js"></script>
+    <script src="stages.js"></script>
+    <script src="offsets.js"></script>
+    <script src="pwn.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
-    </script>
+
+        body {
+            margin: 0;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            font-family: Helvetica, Arial, sans-serif;
+            color: white;
+            background:
+                radial-gradient(ellipse at 30% 35%, #e8e8e8, transparent 55%),
+                linear-gradient(160deg, #333 0%, #bcbcbc 45%, #777 100%);
+        }
+
+        /* Water droplets */
+        .wallpaper {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            background:
+                radial-gradient(ellipse at 20% 15%, #ffffffaa 0 2px, transparent 4px),
+                radial-gradient(ellipse at 75% 25%, #ffffffaa 0 3px, transparent 6px),
+                radial-gradient(ellipse at 45% 60%, #ffffff99 0 2px, transparent 5px),
+                radial-gradient(ellipse at 90% 80%, #ffffffaa 0 3px, transparent 6px),
+                linear-gradient(150deg, #555, #d0d0d0 45%, #888);
+            background-size: 55px 65px, 80px 90px,
+                             65px 75px, 95px 100px, 100% 100%;
+        }
+
+        .wallpaper::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 20% 30%,
+                    #ffffff66, transparent 4%),
+                radial-gradient(ellipse at 70% 55%,
+                    #ffffff55, transparent 5%),
+                radial-gradient(ellipse at 40% 85%,
+                    #ffffff66, transparent 4%);
+            backdrop-filter: blur(1px);
+        }
+
+        /* Status bar */
+        .status {
+            position: relative;
+            height: 24px;
+            padding: 3px 7px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11px;
+            font-weight: bold;
+            text-shadow: 0 1px 2px #333;
+        }
+
+        .status-right {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        /* Clock */
+        .clock-area {
+            position: relative;
+            height: 61px;
+            text-align: center;
+            text-shadow: 0 1px 3px #333;
+            background: #00000035;
+            border-bottom: 1px solid #ffffff33;
+        }
+
+        #clock {
+            font-size: 46px;
+            font-weight: 200;
+            line-height: 48px;
+            letter-spacing: -2px;
+        }
+
+        #date {
+            font-size: 12px;
+            margin-top: -1px;
+        }
+
+        /* Main screen */
+        .screen {
+            position: relative;
+            height: calc(100% - 24px);
+        }
+
+        /* Bottom unlock area */
+        .unlock-area {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 65px;
+            background: linear-gradient(
+                to bottom,
+                #00000000,
+                #000000bb
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 16px;
+        }
+
+        .slider {
+            position: relative;
+            width: 100%;
+            max-width: 360px;
+            height: 40px;
+            border-radius: 11px;
+            border: 1px solid #111;
+            background: linear-gradient(
+                to bottom,
+                #080808ee,
+                #292929ee,
+                #080808ee
+            );
+            box-shadow:
+                0 1px 2px #ffffff55,
+                inset 0 1px 2px #ffffff33;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .slider-text {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #ddd;
+            text-shadow: 0 1px 2px black;
+            pointer-events: none;
+            padding-left: 35px;
+        }
+
+        .slider-text span {
+            font-weight: 300;
+            color: #aaa;
+        }
+
+        .slider-handle {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 49px;
+            height: 34px;
+            border-radius: 8px;
+            border: 1px solid #aaa;
+            background: linear-gradient(
+                to bottom,
+                #fff,
+                #ddd 50%,
+                #aaa
+            );
+            box-shadow: 0 1px 3px #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #777;
+            font-size: 29px;
+            font-weight: bold;
+            cursor: grab;
+            z-index: 2;
+            user-select: none;
+            transition: left 0.08s;
+        }
+
+        .slider-handle:active {
+            cursor: grabbing;
+        }
+
+        .slider-handle::after {
+            content: "➜";
+        }
+
+        .slider.completed .slider-handle {
+            background: linear-gradient(#ddd, #999);
+        }
+
+    </style>
 </head>
+
 <body>
 
-    <h3>totally-not-spyware v2 (commit-99baa0b)</h3>
-    <p>rejailbreak utility</p>
-    <button id="jbButton" onclick="rejb();">re-jailbreak</button>
+<div class="wallpaper"></div>
 
-    <p>work on iOS 12.0-12.5.x, A7-A10 devices with chimera jailbroken devices.</p>
-    <p>may take upto 20~30 seconds to build jop chain and rejailbreak.</p>
+<div class="screen">
 
-    <p>
-        <a href="https://github.com/wh1te4ever/totally-not-spyware-v2" target="_blank">Source code</a>
-    </p>
+    <div class="status">
+        <div>● M1-3GSM ◈</div>
+        <div class="status-right">
+            <span>◉</span>
+            <span>◕</span>
+            <span>100%</span>
+            <span>▰</span>
+        </div>
+    </div>
 
-    Credits<br>
-    - wh1te4ever (main developer)<br>
-    - alfiecg24 (stable kernel exploit)<br>
-    - felix-pb (kernel exploit)<br>
-    - Samuel Groß (CVE-2020-9802, Webkit Exploit)<br>
-    - CoolStar and all chimera jailbreak developers<br>
-    - JakeBlair420 and all TotallyNotSpyware developers (jop chaining, code-execution idea)<br>
-    - qwertyoruiop (Mach-O loader with +jitMemCpy)<br>
-    - If I ever missed, please let me know.<br>
-    <br>
-    
+    <div class="clock-area">
+        <div id="clock">06:55</div>
+        <div id="date">Monday, 19 March</div>
+    </div>
+
+    <div class="unlock-area">
+
+        <div class="slider" id="slider">
+
+            <div class="slider-text" id="sliderText">
+                <span>slide to unlock</span>
+            </div>
+
+            <div class="slider-handle" id="handle"></div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    // Clock
+    function updateClock() {
+        const now = new Date();
+
+        document.getElementById("clock").textContent =
+            now.toLocaleTimeString("en-GB", {
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+
+        document.getElementById("date").textContent =
+            now.toLocaleDateString("en-GB", {
+                weekday: "long",
+                day: "numeric",
+                month: "long"
+            });
+    }
+
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // Slide to unlock
+    const slider = document.getElementById("slider");
+    const handle = document.getElementById("handle");
+    const sliderText = document.getElementById("sliderText");
+
+    let dragging = false;
+    let startX = 0;
+    let currentX = 0;
+    let unlocked = false;
+
+    const handleWidth = 49;
+
+    function maxPosition() {
+        return slider.clientWidth - handleWidth - 4;
+    }
+
+    handle.addEventListener("pointerdown", (e) => {
+        if (unlocked) return;
+
+        dragging = true;
+        startX = e.clientX - currentX;
+
+        handle.setPointerCapture(e.pointerId);
+    });
+
+    handle.addEventListener("pointermove", (e) => {
+        if (!dragging || unlocked) return;
+
+        currentX = Math.max(
+            0,
+            Math.min(maxPosition(), e.clientX - startX)
+        );
+
+        handle.style.left = (currentX + 2) + "px";
+    });
+
+    function endSlide() {
+        if (!dragging) return;
+
+        dragging = false;
+
+        if (currentX >= maxPosition() * 0.9) {
+            unlock();
+        } else {
+            currentX = 0;
+            handle.style.left = "2px";
+        }
+    }
+
+    handle.addEventListener("pointerup", endSlide);
+    handle.addEventListener("pointercancel", endSlide);
+
+    function unlock() {
+        if (unlocked) return;
+
+        unlocked = true;
+        currentX = maxPosition();
+
+        handle.style.left = (currentX + 2) + "px";
+
+        slider.classList.add("completed");
+        sliderText.innerHTML = "<span>re-jailbreaking...</span>";
+
+        // Same action as the original HTML button
+        setTimeout(() => {
+            rejb();
+        }, 100);
+    }
+
+    // Original functionality
+    function log(msg) {}
+
+    function rejb() {
+        sliderText.innerHTML = "<span>re-jailbreaking...</span>";
+
+        setTimeout(() => {
+            pwn();
+        }, 100);
+    }
+</script>
+
 </body>
 </html>

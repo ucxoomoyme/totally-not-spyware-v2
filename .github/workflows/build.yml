@@ -1,0 +1,53 @@
+
+name: Build stages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            clang \
+            ldid \
+            python3 \
+            python3-pip \
+            git \
+            make \
+            openssl
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Make scripts executable
+        run: |
+          chmod +x build.py
+          chmod +x PayloadMaker.py
+
+      - name: Build
+        run: python3 build.py
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stages-build
+          path: |
+            stages
+            stages.js
+          if-no-files-found: error

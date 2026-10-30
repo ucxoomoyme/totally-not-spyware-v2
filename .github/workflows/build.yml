@@ -32,21 +32,15 @@ jobs:
             openssl \
             libplist-dev
 
-      - name: Install ldid
-        run: |
-          wget -q https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_linux-x86_64 -O ldid || true
-          if ! file ldid | grep -q ELF; then
-            echo "Could not download ldid binary"
-            exit 1
-          fi
-          chmod +x ldid
-          sudo mv ldid /usr/local/bin/ldid
-          ldid -h || true
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
+
+      - name: Install ldid
+        uses: MOZGIII/install-ldid-action@v1
+        with:
+          tag: v2.1.5-procursus7
 
       - name: Prepare scripts
         run: |
@@ -56,11 +50,16 @@ jobs:
       - name: Build
         run: python3 build.py
 
-      - name: Upload artifact
+      - name: Verify output
+        run: |
+          ls -lah
+          test -f stages.js
+
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: stages-build
           path: |
-            stages
             stages.js
+            stages
           if-no-files-found: error
